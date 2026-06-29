@@ -31,3 +31,44 @@ By default, the Access Server `Admin` user can only connect once to any data sto
 * Compile the Sample1 class
 * Update the `.env` file and specify the correct host, port, Admin user and password for Access Server
 * Run the Sample1 class: `java -cp "target/cdc-chcclp-rest-server-1.0-SNAPSHOT.jar.original:lib/*" Sample1 2>&1`
+
+# Using the web service
+
+## Start the web service
+
+```
+java -jar target/cdc-chcclp-rest-server-1.0-SNAPSHOT.jar
+```
+
+## Test some REST commands
+
+The Access Server credentials are already in the `.env` file so we don't need to connect to an Access Server. This should be changed so that the first API call is always `/connect` and one has to specify the Access Server hostname, port and credentials.
+
+```
+# 1. Open a session (credentials from .env)
+```
+curl -s -X POST http://localhost:8080/sessions \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+```output
+{
+  "sessionId" : "57a1f54f-bb9e-439e-9b10-45d2a913032a",
+  "createdAt" : "2026-06-29T13:42:24.481634Z"
+}
+```                                           
+
+Connect to the data store and list subscriptions.
+```
+export SESSION=57a1f54f-bb9e-439e-9b10-45d2a913032a
+curl -s -X POST http://localhost:8080/sessions/$SESSION/execute \
+  -H "Content-Type: application/json" \
+  -d '{"command": "connect datastore name Db2LUW context source;"}'
+
+curl -s -X POST http://localhost:8080/sessions/$SESSION/execute \
+  -H "Content-Type: application/json" \
+  -d '{"command": "list subscriptions filter datastore;"}'
+
+curl -s -X DELETE http://localhost:8080/sessions/$SESSION
+```
