@@ -1,0 +1,26 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Imported jars
+lib/*.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# macOS
+.DS_Store
+
+# Compiled classes
+*.class
+
+# Logs
+*.log
+
+# Local environment secrets
+.env
