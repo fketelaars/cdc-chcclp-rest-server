@@ -2,29 +2,77 @@
 
 Interface into the CHCCLP command line interface using REST APIs. Later this will also be made available as an MCP server.
 
-## TechZone reservation setup
+# Building the CDC CHCCLP REST service image
 
-* Request a TechZone environment **IBM Data Replication - CDC Demo Environment V2**: https://techzone.ibm.com/my/reservations/create/6867e07744d01770f44d78a6
-* Host name and IP addresses for the different services are in the reservation
-* Record host names, ports for the access server. You will need to configure this in the `.env` file
+## Mandatory build arguments
+None,
 
-## Download the Access Server jar files
+## Optional build arguments
+None.
 
-* The jar files that the REST service needs are in the Access Server `lib` directory: `$CDC_HOME/lib`
-* Copy all the jar files into the `lib` directory of this repository
+## Build steps for docker or podman
+The below steps will build the container image and automatically install CDC Access Server.
 
-## Set up the datastore locking
+### Download CDC Access Server JAR file
 
-By default, the Access Server `admin` user can only connect once to any data store. To avoid having to log out from the Management Console, do the following
-* Open Management Console
-* Select the Access Manager tab
-* Right-click on the data stores, select Properties
-* Untick the **Require subscriptions to be locked** for both data store
+For the REST service to work, you need a working copy of the IDR CDC Access Server. The REST service uses embedded CHCCLP which requires the Access Server jar files. You must copy all jar files from the Access Server into the `lib` directory of this repo.
 
-## Start the web service
+### Create the container image
+```
+docker build -t cdc-chcclp-rest:latest .
+```
+
+or using `podman`:
+```
+podman build -t cdc-chcclp-rest:latest .
+```
+
+# Running CDC CHCCLP REST Server
+
+## Mandatory run arguments
+None.
+
+## Optional run arguments
+`CDC_ACCESS_SERVER_HOST` - CDC Access Server host name
+`CDC_ACCESS_SERVER_PORT` - CDC Access Server port
+
+### Running CDC CHCCLP REST server without configuring the Access Server
+```
+docker run -d \
+    -p 8080:8080 \
+    cdc-chcclp-rest:latest
+```
+
+or using `podman`:
+```
+podman run -d \
+    -p 8080:8080 \
+    cdc-chcclp-rest:latest
+```
+
+### Running CDC CHCCLP REST server and configuring the Access Server
+
+Set environment variables:
+```
+export CDC_ACCESS_SERVER_HOST=your-access-server-host
+export CDC_ACCESS_SERVER_PORT=your-access-server-port
+```
 
 ```
-java -jar target/cdc-chcclp-rest-server-1.0-SNAPSHOT.jar
+docker run -d \
+    -p 8080:8080 \
+    -e CDC_ACCESS_SERVER_HOST=${CDC_ACCESS_SERVER_HOST} \
+    -e CDC_ACCESS_SERVER_PORT=${CDC_ACCESS_SERVER_PORT} \
+    cdc-chcclp-rest:latest
+```
+
+or using `podman`:
+```
+podman run -d \
+    -p 8080:8080 \
+    -e CDC_ACCESS_SERVER_HOST=${CDC_ACCESS_SERVER_HOST} \
+    -e CDC_ACCESS_SERVER_PORT=${CDC_ACCESS_SERVER_PORT} \
+    cdc-chcclp-rest:latest
 ```
 
 ## REST API

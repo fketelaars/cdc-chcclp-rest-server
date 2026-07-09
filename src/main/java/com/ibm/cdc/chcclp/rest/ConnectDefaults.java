@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
  * Default connect-server credentials loaded from {@code .env} / environment variables.
  *
  * <pre>
- * CONNECT_HOSTNAME=my-access-server
- * CONNECT_PORT=11001
+ * CDC_ACCESS_SERVER_HOST=my-access-server
+ * CDC_ACCESS_SERVER_PORT=11001
  * CONNECT_USERNAME=admin
  * CONNECT_PASSWORD=secret
  * </pre>

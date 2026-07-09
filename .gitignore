@@ -18,9 +18,7 @@ lib/*.jar
 
 # Compiled classes
 *.class
+*.jar
 
 # Logs
 *.log
-
-# Local environment secrets
-.env

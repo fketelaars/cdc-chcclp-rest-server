@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# start.sh — build (if needed) and start the CDC CHCCLP REST service
 set -euo pipefail
 
 JAR="target/cdc-chcclp-rest-server-1.0-SNAPSHOT.jar"
