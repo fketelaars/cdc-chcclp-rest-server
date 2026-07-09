@@ -1,4 +1,4 @@
-package com.example.chcclp;
+package com.ibm.cdc.chcclp.rest;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

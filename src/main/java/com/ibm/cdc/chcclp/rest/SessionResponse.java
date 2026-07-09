@@ -1,7 +1,7 @@
-package com.example.chcclp;
+package com.ibm.cdc.chcclp.rest;
 
 /**
- * Response body for {@code POST /sessions}.
+ * Response body for {@code GET /sessions} and {@code GET /sessions/{id}}.
  */
 public class SessionResponse {
 

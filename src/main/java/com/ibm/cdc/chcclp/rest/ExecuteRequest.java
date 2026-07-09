@@ -1,4 +1,4 @@
-package com.example.chcclp;
+package com.ibm.cdc.chcclp.rest;
 
 /**
  * Request body for {@code POST /sessions/{id}/execute}.

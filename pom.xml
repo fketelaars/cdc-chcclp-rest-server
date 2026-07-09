@@ -73,7 +73,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <includeSystemScope>true</includeSystemScope>
-                    <mainClass>com.example.chcclp.ChcclpWebServiceApplication</mainClass>
+                    <mainClass>com.ibm.cdc.chcclp.rest.ChcclpWebServiceApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

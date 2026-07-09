@@ -1,6 +1,7 @@
-package com.example.chcclp;
+package com.ibm.cdc.chcclp.rest;
 
 import com.ibm.replication.cdc.scripting.EmbeddedScriptException;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,64 +14,68 @@ import java.util.Map;
  * REST controller exposing the CHCCLP session and command execution API.
  *
  * <pre>
- * POST   /sessions                  – open a new session and connect to an access server
- * GET    /sessions                  – list all active sessions
- * GET    /sessions/{id}             – get metadata for a specific session
- * POST   /sessions/{id}/execute     – execute a CHCCLP command in the session
- * DELETE /sessions/{id}             – disconnect and close the session
+ * POST   /connect                   – open a new session, connect to an access server,
+ *                                     and return a Bearer token
+ * GET    /sessions                  – list all active sessions  [requires token]
+ * GET    /sessions/{id}             – get metadata for a specific session  [requires token]
+ * POST   /sessions/{id}/execute     – execute a CHCCLP command in the session  [requires token]
+ * DELETE /sessions/{id}             – disconnect and close the session  [requires token]
  * </pre>
+ *
+ * <p>Every endpoint except {@code POST /connect} requires an
+ * {@code Authorization: Bearer <token>} header.  The {@link AuthFilter} validates
+ * the token and stores the session ID as the request attribute
+ * {@link AuthFilter#SESSION_ID_ATTR}.
  */
 @RestController
-@RequestMapping("/sessions")
 public class ChcclpController {
 
     private final SessionManager sessionManager;
     private final ConnectDefaults connectDefaults;
+    private final TokenService tokenService;
 
-    public ChcclpController(SessionManager sessionManager, ConnectDefaults connectDefaults) {
+    public ChcclpController(SessionManager sessionManager,
+                            ConnectDefaults connectDefaults,
+                            TokenService tokenService) {
         this.sessionManager = sessionManager;
         this.connectDefaults = connectDefaults;
+        this.tokenService = tokenService;
     }
 
     // -------------------------------------------------------------------------
-    // POST /sessions — create session and connect to access server
+    // POST /connect — create session, connect to access server, return token
     // -------------------------------------------------------------------------
 
-    @PostMapping
-    public ResponseEntity<?> createSession(@RequestBody ConnectRequest req) {
-        // Apply .env defaults for any field the caller left blank / zero
-        if (req.getHostname() == null || req.getHostname().isBlank()) {
-            req.setHostname(connectDefaults.getHostname());
+    @PostMapping("/connect")
+    public ResponseEntity<?> connect(@RequestBody ConnectRequest req) {
+        // accessServerHost and accessServerPort are optional — fall back to .env defaults
+        if (req.getAccessServerHost() == null || req.getAccessServerHost().isBlank()) {
+            req.setAccessServerHost(connectDefaults.getHostname());
         }
-        if (req.getPort() <= 0) {
-            req.setPort(connectDefaults.getPort());
-        }
-        if (req.getUsername() == null || req.getUsername().isBlank()) {
-            req.setUsername(connectDefaults.getUsername());
-        }
-        if (req.getPassword() == null || req.getPassword().isBlank()) {
-            req.setPassword(connectDefaults.getPassword());
+        if (req.getAccessServerPort() <= 0) {
+            req.setAccessServerPort(connectDefaults.getPort());
         }
 
         // Validate after defaults have been applied
-        if (req.getHostname() == null || req.getHostname().isBlank()) {
-            return badRequest("hostname is required");
+        if (req.getAccessServerHost() == null || req.getAccessServerHost().isBlank()) {
+            return badRequest("accessServerHost is required");
         }
-        if (req.getPort() <= 0) {
-            return badRequest("port must be a positive integer");
+        if (req.getAccessServerPort() <= 0) {
+            return badRequest("accessServerPort must be a positive integer");
         }
-        if (req.getUsername() == null || req.getUsername().isBlank()) {
-            return badRequest("username is required");
+        if (req.getAccessServerUser() == null || req.getAccessServerUser().isBlank()) {
+            return badRequest("accessServerUser is required");
         }
-        if (req.getPassword() == null || req.getPassword().isBlank()) {
-            return badRequest("password is required");
+        if (req.getAccessServerPassword() == null || req.getAccessServerPassword().isBlank()) {
+            return badRequest("accessServerPassword is required");
         }
 
         try {
             ChcclpSession session = sessionManager.createSession(req);
+            String token = tokenService.createToken(session.getId());
             return ResponseEntity
                     .status(HttpStatus.CREATED)
-                    .body(new SessionResponse(session.getId(), session.getCreatedAt().toString()));
+                    .body(new ConnectResponse(token, session.getCreatedAt().toString()));
         } catch (EmbeddedScriptException e) {
             return ResponseEntity
                     .status(HttpStatus.BAD_GATEWAY)
@@ -82,7 +87,7 @@ public class ChcclpController {
     // GET /sessions — list all active sessions
     // -------------------------------------------------------------------------
 
-    @GetMapping
+    @GetMapping("/sessions")
     public ResponseEntity<List<Map<String, Object>>> listSessions() {
         return ResponseEntity.ok(sessionManager.listSessions());
     }
@@ -91,7 +96,7 @@ public class ChcclpController {
     // GET /sessions/{id} — get session metadata
     // -------------------------------------------------------------------------
 
-    @GetMapping("/{id}")
+    @GetMapping("/sessions/{id}")
     public ResponseEntity<?> getSession(@PathVariable String id) {
         ChcclpSession session = sessionManager.getSession(id);
         if (session == null) {
@@ -104,22 +109,28 @@ public class ChcclpController {
     }
 
     // -------------------------------------------------------------------------
-    // POST /sessions/{id}/execute — run a CHCCLP command
+    // POST /execute — run a CHCCLP command (session resolved from token)
     // -------------------------------------------------------------------------
 
-    @PostMapping("/{id}/execute")
-    public ResponseEntity<?> execute(@PathVariable String id, @RequestBody ExecuteRequest req) {
+    @PostMapping("/execute")
+    public ResponseEntity<?> execute(@RequestBody ExecuteRequest req,
+                                     HttpServletRequest httpRequest) {
         if (req.getCommand() == null || req.getCommand().isBlank()) {
             return badRequest("command is required");
         }
 
+        String id = (String) httpRequest.getAttribute(AuthFilter.SESSION_ID_ATTR);
         ChcclpSession session = sessionManager.getSession(id);
         if (session == null) {
             return notFound(id);
         }
 
         try {
-            String result = session.execute(req.getCommand());
+            String command = req.getCommand().stripTrailing();
+            if (!command.endsWith(";")) {
+                command = command + ";";
+            }
+            Object result = session.execute(command);
             return ResponseEntity.ok(new ExecuteResponse(result, Instant.now().toString()));
         } catch (EmbeddedScriptException e) {
             return ResponseEntity
@@ -132,8 +143,16 @@ public class ChcclpController {
     // DELETE /sessions/{id} — disconnect and close the session
     // -------------------------------------------------------------------------
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> closeSession(@PathVariable String id) {
+    @DeleteMapping("/sessions/{id}")
+    public ResponseEntity<?> closeSession(@PathVariable String id,
+                                          HttpServletRequest httpRequest) {
+        // Verify the token's session matches the path parameter
+        String tokenSessionId = (String) httpRequest.getAttribute(AuthFilter.SESSION_ID_ATTR);
+        if (!id.equals(tokenSessionId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("forbidden", "Token does not match the requested session"));
+        }
+
         if (sessionManager.getSession(id) == null) {
             return notFound(id);
         }

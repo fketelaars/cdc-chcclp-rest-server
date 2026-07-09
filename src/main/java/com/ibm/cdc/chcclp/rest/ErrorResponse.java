@@ -1,4 +1,4 @@
-package com.example.chcclp;
+package com.ibm.cdc.chcclp.rest;
 
 /**
  * Generic error response body returned on 4xx / 5xx responses.

@@ -1,4 +1,4 @@
-package com.example.chcclp;
+package com.ibm.cdc.chcclp.rest;
 
 import com.ibm.replication.cdc.scripting.EmbeddedScriptException;
 import org.slf4j.Logger;
@@ -44,10 +44,11 @@ public class SessionManager {
         ChcclpSession session = new ChcclpSession(id);
         String connectCmd = String.format(
                 "connect server hostname %s port %d username %s password %s;",
-                req.getHostname(), req.getPort(), req.getUsername(), req.getPassword());
+                req.getAccessServerHost(), req.getAccessServerPort(),
+                req.getAccessServerUser(), req.getAccessServerPassword());
         session.execute(connectCmd);
         sessions.put(id, session);
-        log.info("Session {} created, connected to {}:{}", id, req.getHostname(), req.getPort());
+        log.info("Session {} created, connected to {}:{}", id, req.getAccessServerHost(), req.getAccessServerPort());
         return session;
     }
 
